@@ -146,6 +146,16 @@ struct variable_k
     int Number_Variable;
 };
 
+enum Type_Neutral
+{
+    L0    = 4,
+    L1    = 5,
+    R0    = 6,
+    R1    = 7,
+    Left  = 8,
+    Right = 9
+};
+
 variable_k* Array_Variable   = NULL;
 size_t Size_Array_Variable   =    0;
 int Variable_Differentiation =   -1;
@@ -173,6 +183,7 @@ int Dump_For_Html      (const tree_k* const Tree, const char* const Name_File, c
 
 int Delete_Subtree  (node_k* Node, size_t* const Counter_Delete);
 size_t Size_Subtree (const node_k* const Node);
+int Set_Parents     (node_k* Node, node_k* Parent);
 
 node_k* Get_General            (char** Str, const char* const Start_Str);
 node_k* Get_For_Addition       (char** Str, const char* const Start_Str);
@@ -195,6 +206,13 @@ node_k* Copy_Tree            (const node_k* const Node);
 node_k* Create_Node          (const int Type, const double Value, node_k* const Left, node_k* const Right);
 int Find_Variable            (const node_k* const Node, const int Number_Variable);
 int Mini_Find_Variable       (const node_k* const Node, const int Number_Variable);
+
+int Simplify           (tree_k* const Tree);
+int Check_Number_Tree  (node_k* const Node);
+int Number_Node        (node_k* const Node);
+int Check_Neutral_Tree (node_k* const Node, const int Direction_Parent, tree_k* const Tree);
+int Neutral_Node       (node_k* const Node, const int Direction_Parent, tree_k* const Tree);
+int Fasten             (node_k* const Node, const int Direction_Parent, const int Direction_Son, tree_k* const Tree);
 
 int Start_Logfile           ();
 int Print_Separator_In_Log  (const size_t Len_Separator, FILE* file_html);

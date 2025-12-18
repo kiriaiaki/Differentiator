@@ -2,7 +2,7 @@
 
 #define DEBUG // включает верификаторы и создание logfile
 //#define STOP_PROGRAMME // в случае выявления ошибок программа останавливается
-//#define LIGHT_DUMP
+#define LIGHT_DUMP
 
 #define d(NODE_PTR) Differentiation_Node (NODE_PTR, Number_Variable)
 #define c(NODE_PTR) Copy_Tree (NODE_PTR)
@@ -44,13 +44,17 @@ int main ()
         return 0;
     }
 
-    tree_k* Tree_1 = Differentiation_Tree (&Tree, Variable_Differentiation);
 
-    Print_Node (Tree.Root);
-    printf ("\n");
+    tree_k* Tree_1 = Differentiation_Tree (&Tree, Variable_Differentiation);
+    if (Tree_1 == NULL)
+    {
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return 0;
+    }
 
     Tree_Dtor (&Tree);
     Tree_Dtor (Tree_1);
+
     #ifndef DEBUG
         if (Start_Logfile () == There_Are_Errors)
         {
@@ -160,6 +164,8 @@ int Tree_Ctor (tree_k* const Tree)
     }
 
     Variable_Differentiation = Read_Diff_Variable (&Buffer);
+
+    Set_Parents (Tree->Root, NULL);
 
     free (Copy_Buffer);
 
@@ -405,37 +411,49 @@ int Dump_Node          (const node_k* const Node, FILE* const file_graph)
         if (Node->Type == Operation)
         {
             fprintf (file_graph, "    node_%lx [shape = Mrecord, label = <<TABLE BORDER = \"0\" CELLBORDER = \"1\" CELLSPACING = \"0\" CELLPADDING = \"4\" BGCOLOR = \"lightgrey\">\n"
-                                "        <TR> <TD COLSPAN = \"2\" BGCOLOR = \"#%06x\"> <b>ptr</b>   = %p  </TD> </TR>\n"
-                                "        <TR> <TD COLSPAN = \"2\">          <b>ver</b>   = %lx </TD> </TR>\n"
-                                "        <TR> <TD BGCOLOR = \"lightgreen\"> <b>type</b>  = %s </TD>\n"
-                                "             <TD BGCOLOR = \"pink\">       <b>value</b> = %s </TD> </TR>\n"
-                                "        <TR> <TD BGCOLOR = \"#%06x\">      <b>left</b>  = %p </TD>\n"
-                                "             <TD BGCOLOR = \"#%06x\">      <b>right</b> = %p </TD> </TR>\n"
-                                "        </TABLE>>, style = \"filled\", fillcolor = \"lightgrey\"];\n\n", (uintptr_t) Node, Generate_Color (Node, 0x000000), Node, Node->Verification, Name_Types_Arguments[Node->Type], Name_Operation[int (Node->Value)].Name_For_Dump, Generate_Color (Node->Left, 0x000000), Node->Left, Generate_Color (Node->Right, 0x000000), Node->Right);
+                                "        <TR> <TD COLSPAN = \"2\" BGCOLOR = \"#%06x\"> <b>ptr</b> = %p </TD> </TR>\n"
+                                "        <TR> <TD COLSPAN = \"2\" BGCOLOR = \"#%06x\"> <b>parent</b> = %p </TD> </TR>\n"
+                                "        <TR> <TD COLSPAN = \"2\"> <b>ver</b> = %lx </TD> </TR>\n"
+                                "        <TR> <TD BGCOLOR = \"lightgreen\"> <b>type</b> = %s </TD>\n"
+                                "             <TD BGCOLOR = \"pink\"> <b>value</b> = %s </TD> </TR>\n"
+                                "        <TR> <TD BGCOLOR = \"#%06x\"> <b>left</b> = %p </TD>\n"
+                                "             <TD BGCOLOR = \"#%06x\"> <b>right</b> = %p </TD> </TR>\n"
+                                "        </TABLE>>, style = \"filled\", fillcolor = \"lightgrey\"];\n\n", (uintptr_t) Node, Generate_Color (Node, 0x000000), Node, Generate_Color (Node->Daddy, 0x000000), Node->Daddy, Node->Verification, Name_Types_Arguments[Node->Type], Name_Operation[int (Node->Value)].Name_For_Dump, Generate_Color (Node->Left, 0x000000), Node->Left, Generate_Color (Node->Right, 0x000000), Node->Right);
         }
 
         else if (Node->Type == Number)
         {
-                fprintf (file_graph, "    node_%lx [shape = Mrecord, label = <<TABLE BORDER = \"0\" CELLBORDER = \"1\" CELLSPACING = \"0\" CELLPADDING = \"4\" BGCOLOR = \"lightgrey\">\n"
-                                "        <TR> <TD COLSPAN = \"2\" BGCOLOR = \"#%06x\"> <b>ptr</b>   = %p  </TD> </TR>\n"
-                                "        <TR> <TD COLSPAN = \"2\">          <b>ver</b>   = %lx </TD> </TR>\n"
-                                "        <TR> <TD BGCOLOR = \"lightgreen\"> <b>type</b>  = %s </TD>\n"
-                                "             <TD BGCOLOR = \"pink\">       <b>value</b> = %g </TD> </TR>\n"
-                                "        <TR> <TD BGCOLOR = \"#%06x\">      <b>left</b>  = %p </TD>\n"
-                                "             <TD BGCOLOR = \"#%06x\">      <b>right</b> = %p </TD> </TR>\n"
-                                "        </TABLE>>, style = \"filled\", fillcolor = \"lightgrey\"];\n\n", (uintptr_t) Node, Generate_Color (Node, 0x000000), Node, Node->Verification, Name_Types_Arguments[Node->Type], Node->Value, Generate_Color (Node->Left, 0x000000), Node->Left, Generate_Color (Node->Right, 0x000000), Node->Right);
+            fprintf (file_graph, "    node_%lx [shape = Mrecord, label = <<TABLE BORDER = \"0\" CELLBORDER = \"1\" CELLSPACING = \"0\" CELLPADDING = \"4\" BGCOLOR = \"lightgrey\">\n"
+                                "        <TR> <TD COLSPAN = \"2\" BGCOLOR = \"#%06x\"> <b>ptr</b> = %p </TD> </TR>\n"
+                                "        <TR> <TD COLSPAN = \"2\" BGCOLOR = \"#%06x\"> <b>parent</b> = %p </TD> </TR>\n"
+                                "        <TR> <TD COLSPAN = \"2\"> <b>ver</b> = %lx </TD> </TR>\n"
+                                "        <TR> <TD BGCOLOR = \"lightgreen\"> <b>type</b> = %s </TD>\n"
+                                "             <TD BGCOLOR = \"pink\"> <b>value</b> = %g </TD> </TR>\n"
+                                "        <TR> <TD BGCOLOR = \"#%06x\"> <b>left</b> = %p </TD>\n"
+                                "             <TD BGCOLOR = \"#%06x\"> <b>right</b> = %p </TD> </TR>\n"
+                                "        </TABLE>>, style = \"filled\", fillcolor = \"lightgrey\"];\n\n", (uintptr_t) Node, Generate_Color (Node, 0x000000), Node, Generate_Color (Node->Daddy, 0x000000), Node->Daddy, Node->Verification, Name_Types_Arguments[Node->Type], Node->Value, Generate_Color (Node->Left, 0x000000), Node->Left, Generate_Color (Node->Right, 0x000000), Node->Right);
         }
 
         else if (Node->Type == Variable)
         {
-                fprintf (file_graph, "    node_%lx [shape = Mrecord, label = <<TABLE BORDER = \"0\" CELLBORDER = \"1\" CELLSPACING = \"0\" CELLPADDING = \"4\" BGCOLOR = \"lightgrey\">\n"
-                                "        <TR> <TD COLSPAN = \"2\" BGCOLOR = \"#%06x\"> <b>ptr</b>   = %p  </TD> </TR>\n"
-                                "        <TR> <TD COLSPAN = \"2\">          <b>ver</b>   = %lx </TD> </TR>\n"
-                                "        <TR> <TD BGCOLOR = \"lightgreen\"> <b>type</b>  = %s </TD>\n"
-                                "             <TD BGCOLOR = \"pink\">       <b>value</b> = %s </TD> </TR>\n"
-                                "        <TR> <TD BGCOLOR = \"#%06x\">      <b>left</b>  = %p </TD>\n"
-                                "             <TD BGCOLOR = \"#%06x\">      <b>right</b> = %p </TD> </TR>\n"
-                                "        </TABLE>>, style = \"filled\", fillcolor = \"lightgrey\"];\n\n", (uintptr_t) Node, Generate_Color (Node, 0x000000), Node, Node->Verification, Name_Types_Arguments[Node->Type], Array_Variable[int (Node->Value)].Name_Variable, Generate_Color (Node->Left, 0x000000), Node->Left, Generate_Color (Node->Right, 0x000000), Node->Right);
+            fprintf (file_graph, "    node_%lx [shape = Mrecord, label = <<TABLE BORDER = \"0\" CELLBORDER = \"1\" CELLSPACING = \"0\" CELLPADDING = \"4\" BGCOLOR = \"lightgrey\">\n"
+                                "        <TR> <TD COLSPAN = \"2\" BGCOLOR = \"#%06x\"> <b>ptr</b> = %p </TD> </TR>\n"
+                                "        <TR> <TD COLSPAN = \"2\" BGCOLOR = \"#%06x\"> <b>parent</b> = %p </TD> </TR>\n"
+                                "        <TR> <TD COLSPAN = \"2\"> <b>ver</b> = %lx </TD> </TR>\n"
+                                "        <TR> <TD BGCOLOR = \"lightgreen\"> <b>type</b> = %s </TD>\n"
+                                "             <TD BGCOLOR = \"pink\"> <b>value</b> = %s </TD> </TR>\n"
+                                "        <TR> <TD BGCOLOR = \"#%06x\"> <b>left</b> = %p </TD>\n"
+                                "             <TD BGCOLOR = \"#%06x\"> <b>right</b> = %p </TD> </TR>\n"
+                                "        </TABLE>>, style = \"filled\", fillcolor = \"lightgrey\"];\n\n", (uintptr_t) Node, Generate_Color (Node, 0x000000), Node, Generate_Color (Node->Daddy, 0x000000), Node->Daddy, Node->Verification, Name_Types_Arguments[Node->Type], Array_Variable[int (Node->Value)].Name_Variable, Generate_Color (Node->Left, 0x000000), Node->Left, Generate_Color (Node->Right, 0x000000), Node->Right);
+        }
+
+        if (Node->Daddy != NULL && Node->Daddy->Verification == ((uintptr_t) (Node->Daddy) ^ Canary))
+        {
+            fprintf (file_graph, "    node_%lx -> node_%lx [color = \"#%06x\"];\n", (uintptr_t) Node, (uintptr_t) Node->Daddy, Generate_Color (Node->Daddy, 0x000000));
+        }
+        else if (Node->Daddy != NULL)
+        {
+            fprintf (file_graph, "    node_%lx -> node_%lx [label = \"Невозможный указатель parent\"];\n", (uintptr_t) Node, (uintptr_t) Node->Daddy);
         }
     #endif // LIGHT_DUMP
 
@@ -462,6 +480,7 @@ int Dump_Node          (const node_k* const Node, FILE* const file_graph)
         {
             #ifndef LIGHT_DUMP
                 fprintf (file_graph, "    node_%lx -> node_%lx [color = \"#%06x\"];\n", (uintptr_t) Node, (uintptr_t) Node->Left, Generate_Color (Node->Left, 0x000000));
+
                 Dump_Node (Node->Left, file_graph);
             #endif // LIGHT_DUMP
 
@@ -497,6 +516,7 @@ int Dump_Node          (const node_k* const Node, FILE* const file_graph)
         {
             #ifndef LIGHT_DUMP
                 fprintf (file_graph, "    node_%lx -> node_%lx [color = \"#%06x\"];\n", (uintptr_t) Node, (uintptr_t) Node->Right, Generate_Color (Node->Right, 0x000000));
+
                 Dump_Node (Node->Right, file_graph);
             #endif // LIGHT_DUMP
 
@@ -653,6 +673,22 @@ size_t Size_Subtree (const node_k* const Node)
     }
 
     return Counter_Element;
+}
+
+int Set_Parents (node_k* Node, node_k* Parent)
+{
+    if (Node == NULL)
+    {
+        return 0;
+    }
+
+    Node->Daddy = Parent;
+
+    Set_Parents (Node->Left, Node);
+
+    Set_Parents (Node->Right, Node);
+
+    return 0;
 }
 
 
@@ -1262,8 +1298,24 @@ tree_k* Differentiation_Tree (const tree_k* const Tree, const int Number_Variabl
 
     New_Tree->Root = Differentiation_Node (Tree->Root, Number_Variable);
 
+    Set_Parents (New_Tree->Root, NULL);
+
     New_Tree->Size = Size_Subtree (New_Tree->Root);
     if (New_Tree->Size == There_Are_Errors)
+    {
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return NULL;
+    }
+
+    #ifdef DEBUG
+        if (Tree_Dump (New_Tree, Name_Func) == There_Are_Errors)
+        {
+            printf ("%s:%d: Error dump in %s\n", __FILE__, __LINE__, __FUNCTION__);
+            return NULL;
+        }
+    #endif // DEBUG
+
+    if (Simplify (New_Tree) == There_Are_Errors)
     {
         printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
         return NULL;
@@ -1484,6 +1536,471 @@ int Mini_Find_Variable       (const node_k* const Node, const int Number_Variabl
         }
     }
 
+    return 0;
+}
+
+
+int Simplify           (tree_k* const Tree)
+{
+    int A = -7;
+    int B = -7;
+
+    do {
+
+        A = Check_Number_Tree (Tree->Root);
+        if (A == There_Are_Errors)
+        {
+            printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+            return There_Are_Errors;
+        }
+
+        B = Check_Neutral_Tree (Tree->Root, 0, Tree);
+        if (B == There_Are_Errors)
+        {
+            printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+            return There_Are_Errors;
+        }
+
+    } while (A == 0 || B == 0);
+
+    Tree->Size = Size_Subtree (Tree->Root);
+    if (Tree->Size == There_Are_Errors)
+    {
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    return 0;
+}
+
+int Check_Number_Tree  (node_k* const Node)
+{
+    int Status = -7;
+
+    if (Node->Left != NULL)
+    {
+        int A = Check_Number_Tree (Node->Left);
+
+        if (A == There_Are_Errors)
+        {
+            return There_Are_Errors;
+        }
+        if (A == 0)
+        {
+            Status = 0;
+        }
+    }
+
+    if (Node->Right != NULL)
+    {
+        int B = Check_Number_Tree (Node->Right);
+
+        if (B == There_Are_Errors)
+        {
+            return There_Are_Errors;
+        }
+        if (B == 0)
+        {
+            Status = 0;
+        }
+    }
+
+    int Status_Changes = Number_Node (Node);
+
+    if (Status_Changes == There_Are_Errors)
+    {
+        return There_Are_Errors;
+    }
+    if (Status_Changes == 0 || Status == 0)
+    {
+        return 0;
+    }
+
+    return -1;
+}
+
+int Number_Node        (node_k* const Node)
+{
+    double Value = 0;
+
+    if (Node->Type != Operation)
+    {
+        return -1;
+    }
+
+    if (Node->Left->Type == Number && Node->Right == NULL)
+    {
+        switch (int(Node->Value))
+        {
+            case LN:
+                if (Node->Left->Value != 0)
+                {
+                    Value = log (Node->Left->Value);
+                    break;
+                }
+                else
+                {
+                    printf ("%s:%d: Error ln (0) in %s\n", __FILE__, __LINE__, __FUNCTION__);
+                    return There_Are_Errors;
+                }
+            case SIN:
+                Value = sin (Node->Left->Value);
+                break;
+            case COS:
+                Value = cos (Node->Left->Value);
+                break;
+            case TG:
+                if (cos (Node->Left->Value) != 0)
+                {
+                    Value = tan (Node->Left->Value);
+                    break;
+                }
+                else
+                {
+                    printf ("%s:%d: Error tg (x) and cos(x) = 0 in %s\n", __FILE__, __LINE__, __FUNCTION__);
+                    return There_Are_Errors;
+                }
+            case CTG:
+                if (sin (Node->Left->Value) != 0)
+                {
+                    Value = 1 / tan (Node->Left->Value);
+                    break;
+                }
+                else
+                {
+                    printf ("%s:%d: Error ctg (x) and sin(x) = 0in %s\n", __FILE__, __LINE__, __FUNCTION__);
+                    return There_Are_Errors;
+                }
+            case ARCSIN:
+                Value = asin (Node->Left->Value);
+                break;
+            case ARCCOS:
+                Value = acos (Node->Left->Value);
+                break;
+            case ARCTG:
+                Value = atan (Node->Left->Value);
+                break;
+            case ARCCTG:
+                Value = M_PI / 2 - atan (Node->Left->Value);
+                break;
+            case SH:
+                Value = sinh (Node->Left->Value);
+                break;
+            case CH:
+                Value = cosh (Node->Left->Value);
+                break;
+            case TH:
+                if (sinh (Node->Left->Value) != 0)
+                {
+                    Value = tanh (Node->Left->Value);
+                    break;
+                }
+                else
+                {
+                    printf ("%s:%d: Error tg (x) and sh(x) = 0 in %s\n", __FILE__, __LINE__, __FUNCTION__);
+                    return There_Are_Errors;
+                }
+            case CTH:
+                if (cosh (Node->Left->Value) != 0)
+                {
+                    Value =1 / tanh (Node->Left->Value);
+                    break;
+                }
+                else
+                {
+                    printf ("%s:%d: Error cth (x) and ch(x) = 0 in %s\n", __FILE__, __LINE__, __FUNCTION__);
+                    return There_Are_Errors;
+                }
+        }
+
+        size_t A = 0;
+        if  (Delete_Subtree (Node, &A) == There_Are_Errors)
+        {
+            printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+            return There_Are_Errors;
+        }
+
+        Node->Type = Number;
+        Node->Value = Value;
+
+        return 0;
+    }
+
+    else if (Node->Left->Type == Number && Node->Right->Type == Number)
+    {
+
+        switch (int(Node->Value))
+        {
+            case ADD:
+                Value = Node->Left->Value + Node->Right->Value;
+                break;
+            case SUB:
+                Value = Node->Left->Value - Node->Right->Value;
+                break;
+            case MUL:
+                Value = Node->Left->Value * Node->Right->Value;
+                break;
+            case DIV:
+                if (Node->Right->Value != 0)
+                {
+                    Value = Node->Left->Value / Node->Right->Value;
+                    break;
+                }
+                else
+                {
+                    printf ("%s:%d: Error division by zero in %s\n", __FILE__, __LINE__, __FUNCTION__);
+                    return There_Are_Errors;
+                }
+            case POW:
+                Value = pow (Node->Left->Value, Node->Right->Value);
+                break;
+        }
+
+        size_t A = 0;
+        if  (Delete_Subtree (Node, &A) == There_Are_Errors)
+        {
+            printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+            return There_Are_Errors;
+        }
+
+        Node->Type = Number;
+        Node->Value = Value;
+
+        return 0;
+    }
+
+    return -1;
+}
+
+int Check_Neutral_Tree (node_k* const Node, const int Direction_Parent, tree_k* const Tree)
+{
+    int Status = -7;
+
+    if (Node->Left != NULL)
+    {
+        int A = Check_Neutral_Tree (Node->Left, Left, Tree);
+
+        if (A == There_Are_Errors)
+        {
+            return There_Are_Errors;
+        }
+        if (A == 0)
+        {
+            Status = 0;
+        }
+    }
+
+    if (Node->Right != NULL)
+    {
+        int B = Check_Neutral_Tree (Node->Right, Right, Tree);
+
+        if (B == There_Are_Errors)
+        {
+            return There_Are_Errors;
+        }
+        if (B == 0)
+        {
+            Status = 0;
+        }
+    }
+
+    int Status_Changes = Neutral_Node (Node, Direction_Parent, Tree);
+
+    if (Status_Changes == There_Are_Errors)
+    {
+        return There_Are_Errors;
+    }
+    if (Status_Changes == 0 || Status == 0)
+    {
+        return 0;
+    }
+
+    return -1;
+}
+
+int Neutral_Node       (node_k* const Node, const int Direction_Parent, tree_k* const Tree)
+{
+    if (Node->Type != Operation)
+    {
+        return -1;
+    }
+
+    int Check_Neutral = 0;
+
+    if (Node->Right != NULL && Node->Right->Type == Number && Node->Right->Value == 0)
+    {
+        Check_Neutral = R0;
+    }
+    else if (Node->Right != NULL && Node->Right->Type == Number && Node->Right->Value == 1)
+    {
+        Check_Neutral = R1;
+    }
+    else if (Node->Left != NULL && Node->Left->Type == Number && Node->Left->Value == 0)
+    {
+        Check_Neutral = L0;
+    }
+    else if (Node->Left != NULL && Node->Left->Type == Number && Node->Right->Value == 1)
+    {
+        Check_Neutral = L1;
+    }
+    else
+    {
+        return -1;
+    }
+
+    switch (int(Node->Value))
+    {
+        case ADD:
+            if (Check_Neutral == L0)
+            {
+                Fasten (Node, Direction_Parent, Right, Tree);
+                return 0;
+            }
+            else if (Check_Neutral == R0)
+            {
+                Fasten (Node, Direction_Parent, Left, Tree);
+                return 0;
+            }
+            break;
+        case SUB:
+            if (Check_Neutral == R0)
+            {
+                Fasten (Node, Direction_Parent, Left, Tree);
+                return 0;
+            }
+            else if (Check_Neutral == L0)
+            {
+                Node->Left->Value = -1;
+                Node->Value = MUL;
+            }
+            break;
+        case MUL:
+            if (Check_Neutral == L0)
+            {
+                Fasten (Node, Direction_Parent, Left, Tree);
+                return 0;
+            }
+            else if (Check_Neutral == R0)
+            {
+                Fasten (Node, Direction_Parent, Right, Tree);
+                return 0;
+            }
+            else if (Check_Neutral == L1)
+            {
+                Fasten (Node, Direction_Parent, Right, Tree);
+                return 0;
+            }
+            else if (Check_Neutral == R1)
+            {
+                Fasten (Node, Direction_Parent, Left, Tree);
+                return 0;
+            }
+            break;
+        case DIV:
+            if (Check_Neutral == L0)
+            {
+                Fasten (Node, Direction_Parent, Left, Tree);
+                return 0;
+            }
+            else if (Check_Neutral == R0)
+            {
+                printf ("%s:%d: Error division by zero in %s\n", __FILE__, __LINE__, __FUNCTION__);
+                return There_Are_Errors;
+            }
+            else if (Check_Neutral == R1)
+            {
+                Fasten (Node, Direction_Parent, Left, Tree);
+                return 0;
+            }
+            break;
+        case POW:
+            if (Check_Neutral == L0)
+            {
+                Fasten (Node, Direction_Parent, Left, Tree);
+                return 0;
+            }
+            else if (Check_Neutral == R0)
+            {
+                Node->Right->Value = 1;
+                Fasten (Node, Direction_Parent, Right, Tree);
+                return 0;
+            }
+            else if (Check_Neutral == L1)
+            {
+                Fasten (Node, Direction_Parent, Left, Tree);
+                return 0;
+            }
+            else if (Check_Neutral == R1)
+            {
+                Fasten (Node, Direction_Parent, Left, Tree);
+                return 0;
+            }
+            break;
+    }
+
+    return -1;
+}
+
+int Fasten             (node_k* const Node, const int Direction_Parent, const int Direction_Son, tree_k* const Tree)
+{
+    size_t Counter_Del = 0;
+    if (Direction_Parent == Left)
+    {
+        if (Direction_Son == Left)
+        {
+            Node->Daddy->Left = Node->Left;
+            Node->Left->Daddy = Node->Daddy;
+            Delete_Subtree (Node->Right, &Counter_Del);
+            free (Node->Right);
+        }
+
+        else if (Direction_Son == Right)
+        {
+            Node->Daddy->Left = Node->Right;
+            Node->Right->Daddy = Node->Daddy;
+            Delete_Subtree (Node->Left, &Counter_Del);
+            free (Node->Left);
+        }
+    }
+    else if (Direction_Parent == Right)
+    {
+        if (Direction_Son == Left)
+        {
+            Node->Daddy->Right = Node->Left;
+            Node->Left->Daddy = Node->Daddy;
+            Delete_Subtree (Node->Right, &Counter_Del);
+            free (Node->Right);
+        }
+
+        else if (Direction_Son == Right)
+        {
+            Node->Daddy->Right = Node->Right;
+            Node->Right->Daddy = Node->Daddy;
+            Delete_Subtree (Node->Left, &Counter_Del);
+            free (Node->Left);
+        }
+    }
+
+    else if (Direction_Parent == 0)
+    {
+        if (Direction_Son == Left)
+        {
+            Tree->Root = Node->Left;
+            Node->Left->Daddy = NULL;
+            Delete_Subtree (Node->Right, &Counter_Del);
+            free (Node->Right);
+        }
+
+        else if (Direction_Son == Right)
+        {
+            Tree->Root = Node->Right;
+            Node->Right->Daddy = NULL;
+            Delete_Subtree (Node->Left, &Counter_Del);
+            free (Node->Left);
+        }
+    }
+
+    free (Node);
     return 0;
 }
 
