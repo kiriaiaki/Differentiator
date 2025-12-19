@@ -190,7 +190,7 @@ int Dump_For_Html      (const tree_k* const Tree, const char* const Name_File, c
 int Delete_Subtree  (node_k* Node, size_t* const Counter_Delete);
 size_t Size_Subtree (const node_k* const Node);
 int Set_Parents     (node_k* Node, node_k* Parent);
-int Calculate_Tree  (node_k* const Node, const int Meaning);
+int Calculate_Tree  (node_k* const Node, const double Meaning);
 
 node_k* Get_General            (char** Str, const char* const Start_Str);
 node_k* Get_For_Addition       (char** Str, const char* const Start_Str);
@@ -244,8 +244,4 @@ unsigned int Generate_Color (const void *Ptr, unsigned int Color_Text);
 unsigned int Hash_Pointer   (const void* const ptr);
 double Calculate_Contrast   (unsigned int Color, unsigned int Color_Text);
 int Copy_File_In_Buffer     (char** const Buffer);
-int Clean_Stdin             ();
-char* Read_Answer           ();
-int getline_k               (char** const Str);
-int Delete_Slash_N          (char* const Str);
 int Count_Digits            (int Number);

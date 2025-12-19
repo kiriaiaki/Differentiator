@@ -683,7 +683,7 @@ int Set_Parents     (node_k* Node, node_k* Parent)
     return 0;
 }
 
-int Calculate_Tree  (node_k* const Node, const int Meaning)
+int Calculate_Tree  (node_k* const Node, const double Meaning)
 {
     if (Node->Left != NULL)
     {
@@ -1313,16 +1313,23 @@ int Read_Taylor         (char** Str, const char* const Start_Str)
     }
     (*Str)++;
 
-    node_k* Node = Get_Double (Str, Start_Str);
-    Taylor_Dot = Node->Value;
-    free (Node);
+    int Sign = 1;
+    if (**Str == '-')
+    {
+        Sign = -1;
+        (*Str)++;
+    }
 
-    if (Taylor_Dot == There_Are_Errors)
+    node_k* Node = Get_Double (Str, Start_Str);
+    if (Node == NULL)
     {
         printf ("%s:1:%ld: ERROR bad symbol\n", Equation, *Str - Start_Str);
         printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
         return There_Are_Errors;
     }
+
+    Taylor_Dot = Node->Value * Sign;
+    free (Node);
 
     if (**Str != '\n')
     {
@@ -2584,8 +2591,8 @@ int Graphics_Gnuplot     ()
                             "\n");
 
 
-    fprintf (file_gnuplot, "set xrange [2.8:3.2]\n");
-    fprintf (file_gnuplot, "set yrange [-1:1]\n\n");
+    fprintf (file_gnuplot, "set xrange [-3.3:-2.9]\n");
+    fprintf (file_gnuplot, "set yrange [-2:2]\n\n");
 
     fprintf (file_gnuplot, "f(x) =");
 
@@ -2610,7 +2617,7 @@ int Graphics_Gnuplot     ()
     fprintf (file_gnuplot, "\n\n");
 
     fprintf (file_gnuplot, "plot f(x) with lines lw 2 title 'f(x)',\\\n"
-                           "     f_1(x) with lines lw 2 title 'df(x)'\n\n");
+                           "     f_1(x) with lines lw 2 title 'Taylor'\n\n");
 
     fprintf (file_gnuplot, "set output\n");
 
@@ -2884,63 +2891,6 @@ int Copy_File_In_Buffer     (char** const Buffer)
     close (File_Equation);
 
     return 0;
-}
-
-int Clean_Stdin             ()
-{
-    printf ("\033[H\033[J");
-    fflush(stdout);
-
-    return 0;
-}
-
-char* Read_Answer           ()
-{
-    char* Answer_User = NULL;
-
-    if (getline_k (&Answer_User) == There_Are_Errors)
-    {
-        printf ("%s:%d: Error getline in %s\n", __FILE__, __LINE__, __FUNCTION__);
-        return NULL;
-    }
-
-    return Answer_User;
-}
-
-int getline_k               (char** const Str)
-{
-    size_t Len = 0;
-
-    if (getline (Str, &Len, stdin) == -1)
-    {
-        printf ("%s:%d: Error getline in %s\n", __FILE__, __LINE__, __FUNCTION__);
-        return There_Are_Errors;
-    }
-
-    if (Delete_Slash_N (*Str) == There_Are_Errors)
-    {
-        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
-        return There_Are_Errors;
-    }
-
-    return 0;
-}
-
-int Delete_Slash_N          (char* const Str)
-{
-    size_t Len = strlen (Str);
-
-    if (Len > 0 && Str[Len - 1] == '\n')
-    {
-        Str[Len - 1] = '\0';
-        return 0;
-    }
-
-    else
-    {
-        printf ("%s:%d: Error delete in string\n", __FILE__, __LINE__);
-        return There_Are_Errors;
-    }
 }
 
 int Count_Digits            (int Number)
