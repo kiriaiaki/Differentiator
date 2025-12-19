@@ -25,6 +25,11 @@ clean:
 	@rm -rf File_png
 	@rm -rf File_txt
 	@rm -rf Log_File.html
-	@rm -rf a.out.dSYM
+	@rm -rf Report.aux
+	@rm -rf Report.log
+	@rm -rf Report.pdf
+	@rm -rf Report.tex
+	@rm -rf Graphics.png
+	@rm -rf Graphics.txt
 	@clear
 	@clear

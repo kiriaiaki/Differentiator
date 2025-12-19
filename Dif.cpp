@@ -4,7 +4,7 @@
 //#define STOP_PROGRAMME // в случае выявления ошибок программа останавливается
 #define LIGHT_DUMP
 
-#define d(NODE_PTR) Differentiation_Node (NODE_PTR, Number_Variable)
+#define d(NODE_PTR) Differentiation_Node (NODE_PTR, Number_Variable, Tree, Numbers_Start)
 #define c(NODE_PTR) Copy_Tree (NODE_PTR)
 #define L Node->Left
 #define R Node->Right
@@ -36,152 +36,130 @@ int main ()
         }
     #endif // DEBUG
 
-    tree_k Tree = {};
+    if (Start_Latex () == There_Are_Errors)
+    {
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
 
-    if (Tree_Ctor (&Tree) == There_Are_Errors)
+    tree_k* Tree = Tree_Ctor ();
+    if (Tree == NULL)
     {
         printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
         return 0;
     }
 
-
-    tree_k* Tree_1 = Differentiation_Tree (&Tree, Variable_Differentiation);
+    tree_k* Tree_1 = Differentiation_Tree (Tree, Variable_Differentiation);
     if (Tree_1 == NULL)
     {
         printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
-        return 0;
+        return There_Are_Errors;
     }
+    Array_Tree[1] = Tree_1;
 
-    Tree_Dtor (&Tree);
-    Tree_Dtor (Tree_1);
-
-    #ifndef DEBUG
-        if (Start_Logfile () == There_Are_Errors)
-        {
-            printf ("%s:%d: Error in %s", __FILE__, __LINE__, __FUNCTION__);
-            return There_Are_Errors;
-        }
-
-        if (Tree_Dump (&Tree, "After all function") == There_Are_Errors)
-        {
-            printf ("%s:%d: Error dump in %s", __FILE__, __LINE__, __FUNCTION__);
-            return There_Are_Errors;
-        }
-    #endif // DEBUG
-
-    free (Array_Variable);
-    return 0;
-}
-
-int Print_Node (const node_k* const Node)
-{
-    switch (Node->Type)
+    if (Taylor_Series () == There_Are_Errors)
     {
-        case Number:
-            break;
-        case Operation:
-            switch (int(Node->Value))
-            {
-                case ADD:
-                    printf ("( ");
-                    break;
-                case SUB:
-                    printf ("( ");
-                    break;
-            }
-            break;
-        case Variable:
-            break;
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
     }
 
-    if (Node->Left != NULL)
+    if (Graphics_Latex () == There_Are_Errors)
     {
-        Print_Node (Node->Left);
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
     }
 
-    switch (Node->Type)
+    if (End_Latex () == There_Are_Errors)
     {
-        case Number:
-            printf ("%g ", Node->Value);
-            break;
-        case Operation:
-            printf ("%s ", Name_Operation[int(Node->Value)].Name_For_User);
-            break;
-        case Variable:
-            printf ("%s ", Array_Variable[int(Node->Value)].Name_Variable);
-            break;
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
     }
 
-    if (Node->Right != NULL)
-    {
-        Print_Node (Node->Right);
-    }
-
-    switch (Node->Type)
-    {
-        case Number:
-            break;
-        case Operation:
-            switch (int(Node->Value))
-            {
-                case ADD:
-                    printf (") ");
-                    break;
-                case SUB:
-                    printf (") ");
-                    break;
-            }
-            break;
-        case Variable:
-            break;
-    }
+    Delete_All_Tree ();
 
     return 0;
 }
 
-int Tree_Ctor (tree_k* const Tree)
+tree_k* Tree_Ctor   ()
 {
     char* Buffer = NULL;
     if (Copy_File_In_Buffer (&Buffer) == There_Are_Errors)
     {
         printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
-        return There_Are_Errors;
+        return NULL;
     }
     char* Copy_Buffer = Buffer;
+
+    tree_k* Tree = (tree_k*) calloc (1, sizeof (tree_k));
+    if (Tree == NULL)
+    {
+        printf ("%s:%d: Error allocation memory for tree in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return NULL;
+    }
 
     Tree->Root = Get_General (&Buffer, Copy_Buffer);
     if (Tree->Root == NULL)
     {
         printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
-        return There_Are_Errors;
+        return NULL;
     }
 
     Tree->Size = Size_Subtree (Tree->Root);
     if (Tree->Size == There_Are_Errors)
     {
         printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
-        return There_Are_Errors;
+        return NULL;
     }
 
-    Variable_Differentiation = Read_Diff_Variable (&Buffer);
+    if (Read_Diff_Variable (&Buffer, Copy_Buffer) == There_Are_Errors)
+    {
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return NULL;
+    }
+
+    if (Read_Taylor (&Buffer, Copy_Buffer) == There_Are_Errors)
+    {
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return NULL;
+    }
+
+    Array_Tree = (tree_k**) calloc (Taylor_Number, sizeof (tree_k*));
+    if (Array_Tree == NULL)
+    {
+        printf ("%s:%d: Error allocation memory for array tree in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return NULL;
+    }
+
+    Array_Tree[0] = Tree;
 
     Set_Parents (Tree->Root, NULL);
 
     free (Copy_Buffer);
 
+    if (Start_Tree_Dump (Tree->Root) == There_Are_Errors)
+    {
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return NULL;
+    }
+
     #ifdef DEBUG
         if (Tree_Dump (Tree, "Tree_Ctor_From_Base (Tree, Buffer)") == There_Are_Errors)
         {
             printf ("%s:%d Error dump in %s\n", __FILE__, __LINE__, __FUNCTION__);
-            return There_Are_Errors;
+            return NULL;
         }
     #endif // DEBUG
 
-    return 0;
+    return Tree;
 }
 
-int Tree_Dtor (tree_k* const Tree)
+int Tree_Dtor       (tree_k* const Tree)
 {
+    if (Tree == NULL)
+    {
+        return 0;
+    }
+
     #ifdef DEBUG
         if (Tree_Error (Tree) != Not_Error_Tree)
         {
@@ -209,6 +187,20 @@ int Tree_Dtor (tree_k* const Tree)
 
     free (Tree->Root);
     Tree->Root = NULL;
+
+    return 0;
+}
+
+int Delete_All_Tree ()
+{
+    for (int i = 0; i < Taylor_Number; i++)
+    {
+        Tree_Dtor (Array_Tree[i]);
+        free (Array_Tree[i]);
+    }
+
+    free (Array_Tree);
+    free (Array_Variable);
 
     return 0;
 }
@@ -675,7 +667,7 @@ size_t Size_Subtree (const node_k* const Node)
     return Counter_Element;
 }
 
-int Set_Parents (node_k* Node, node_k* Parent)
+int Set_Parents     (node_k* Node, node_k* Parent)
 {
     if (Node == NULL)
     {
@@ -687,6 +679,27 @@ int Set_Parents (node_k* Node, node_k* Parent)
     Set_Parents (Node->Left, Node);
 
     Set_Parents (Node->Right, Node);
+
+    return 0;
+}
+
+int Calculate_Tree  (node_k* const Node, const int Meaning)
+{
+    if (Node->Left != NULL)
+    {
+        Calculate_Tree (Node->Left, Meaning);
+    }
+
+    if (Node->Right != NULL)
+    {
+        Calculate_Tree (Node->Right, Meaning);
+    }
+
+    if (Node->Type == Variable)
+    {
+        Node->Type = Number;
+        Node->Value = Meaning;
+    }
 
     return 0;
 }
@@ -1221,7 +1234,7 @@ int Skip_Spaces         (char** Str)
     return 0;
 }
 
-int Read_Diff_Variable  (char** Str)
+int Read_Diff_Variable  (char** Str, const char* const Start_Str)
 {
     Skip_Spaces (Str);
 
@@ -1240,14 +1253,25 @@ int Read_Diff_Variable  (char** Str)
 
         if (Interation == 99)
         {
-            printf ("%s:2: ERROR very long word\n", Equation);
+            printf ("%s:1:%ld: ERROR very long word\n", Equation, *Str - Start_Str);
             printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
             return There_Are_Errors;
         }
     }
 
+    if (**Str != '\n')
+    {
+        printf ("%s:1:%ld: ERROR bad symbol\n", Equation, *Str - Start_Str);
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    (*Str)++;
+
     if (Interation == 0)
     {
+        Variable_Differentiation = 0;
+
         return 0;
     }
 
@@ -1257,16 +1281,66 @@ int Read_Diff_Variable  (char** Str)
 
         Skip_Spaces (Str);
 
-        return Table_Name_Variable (String);
+        Variable_Differentiation = Table_Name_Variable (String);
+
+        return 0;
     }
+}
+
+int Read_Taylor         (char** Str, const char* const Start_Str)
+{
+    Skip_Spaces (Str);
+
+    Taylor_Number = Get_Number (Str, Start_Str) + 1;
+    if (Taylor_Number == There_Are_Errors + 1)
+    {
+        printf ("%s:1:%ld: ERROR bad symbol\n", Equation, *Str - Start_Str);
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+    if (Taylor_Number < 2)
+    {
+        printf ("%s:1:%ld: ERROR bad meaning (<2)\n", Equation, *Str - Start_Str);
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    if (**Str != '\n')
+    {
+        printf ("%s:1:%ld: ERROR bad symbol\n", Equation, *Str - Start_Str);
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+    (*Str)++;
+
+    node_k* Node = Get_Double (Str, Start_Str);
+    Taylor_Dot = Node->Value;
+    free (Node);
+
+    if (Taylor_Dot == There_Are_Errors)
+    {
+        printf ("%s:1:%ld: ERROR bad symbol\n", Equation, *Str - Start_Str);
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    if (**Str != '\n')
+    {
+        printf ("%s:1:%ld: ERROR bad symbol\n", Equation, *Str - Start_Str);
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+    (*Str)++;
+
+    return 0;
 }
 
 
 tree_k* Differentiation_Tree (const tree_k* const Tree, const int Number_Variable)
 {
     #ifdef DEBUG
-        char Name_Func[52];
-        snprintf (Name_Func, sizeof (Name_Func), "Differentiation_Tree (Tree, %d)", Number_Variable);
+        char Name_Func[100];
+        snprintf (Name_Func, sizeof (Name_Func), "Differentiation_Tree (Tree, %s)", Array_Variable[Number_Variable].Name_Variable);
 
         if (Tree_Error (Tree) != Not_Error_Tree)
         {
@@ -1283,6 +1357,8 @@ tree_k* Differentiation_Tree (const tree_k* const Tree, const int Number_Variabl
         }
     #endif // DEBUG
 
+    static int Numbers_Start = 0;
+
     tree_k* New_Tree = (tree_k*) calloc (1, sizeof (tree_k));
     if (New_Tree == NULL)
     {
@@ -1296,7 +1372,16 @@ tree_k* Differentiation_Tree (const tree_k* const Tree, const int Number_Variabl
         return NULL;
     }
 
-    New_Tree->Root = Differentiation_Node (Tree->Root, Number_Variable);
+    if (Numbers_Start == 0)
+    {
+        if (Differentiation_Dump () == There_Are_Errors)
+        {
+            printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+            return NULL;
+        }
+    }
+
+    New_Tree->Root = Differentiation_Node (Tree->Root, Number_Variable, Tree, Numbers_Start);
 
     Set_Parents (New_Tree->Root, NULL);
 
@@ -1321,7 +1406,18 @@ tree_k* Differentiation_Tree (const tree_k* const Tree, const int Number_Variabl
         return NULL;
     }
 
+    if (Numbers_Start == 0)
+    {
+        if (Simplify_Dump (New_Tree->Root) == There_Are_Errors)
+        {
+            printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+            return NULL;
+        }
+    }
+
     #ifdef DEBUG
+        snprintf (Name_Func, sizeof (Name_Func), "Differentiation_Tree (Tree, %s) Simplified Tree", Array_Variable[Number_Variable].Name_Variable);
+
         if (Tree_Dump (New_Tree, Name_Func) == There_Are_Errors)
         {
             printf ("%s:%d: Error dump in %s\n", __FILE__, __LINE__, __FUNCTION__);
@@ -1329,42 +1425,50 @@ tree_k* Differentiation_Tree (const tree_k* const Tree, const int Number_Variabl
         }
     #endif // DEBUG
 
+    Numbers_Start++;
     return New_Tree;
 }
 
-node_k* Differentiation_Node (const node_k* const Node, const int Number_Variable)
+node_k* Differentiation_Node (const node_k* const Node, const int Number_Variable, const tree_k* const Tree, const int Numbers_Start)
 {
     int When_Variable = 0;
+    node_k* New_Node = NULL;
 
     switch (Node->Type)
     {
         case Number:
-            return ZERO_;
+            New_Node = ZERO_;
+            break;
 
         case Variable:
 
             if (int (Node->Value) != Number_Variable)
             {
-                return ZERO_;
+                New_Node = ZERO_;
             }
 
-            return ONE_;
+            New_Node = ONE_;
+            break;
 
         case Operation:
 
             switch (int (Node->Value))
             {
                 case ADD:
-                    return ADD_ (d(L), d(R));
+                    New_Node = ADD_ (d(L), d(R));
+                    break;
 
                 case SUB:
-                    return SUB_ (d(L), d(R));
+                    New_Node = SUB_ (d(L), d(R));
+                    break;
 
                 case MUL:
-                    return ADD_ (MUL_ (d(L), c(R)), MUL_ (c(L), d(R)));
+                    New_Node = ADD_ (MUL_ (d(L), c(R)), MUL_ (c(L), d(R)));
+                    break;
 
                 case DIV:
-                    return DIV_ (SUB_ (MUL_ (d(L), c(R)), MUL_ (c(L), d(R))), POW_ (c(R), TWO_));
+                    New_Node = DIV_ (SUB_ (MUL_ (d(L), c(R)), MUL_ (c(L), d(R))), POW_ (c(R), TWO_));
+                    break;
 
                 case POW:
 
@@ -1373,60 +1477,83 @@ node_k* Differentiation_Node (const node_k* const Node, const int Number_Variabl
                     switch (When_Variable)
                     {
                         case Only_Base:
-                            return MUL_ (MUL_ (c(R), d(L)),  POW_ (c(L), SUB_ (c(R), ONE_)));
+                            New_Node = MUL_ (MUL_ (c(R), d(L)),  POW_ (c(L), SUB_ (c(R), ONE_)));
+                            break;
 
                         case Only_Degree:
-                            return MUL_ (POW_ (c(L), c(R)), MUL_ (d(R), LN_ (c(L))));
+                            New_Node = MUL_ (POW_ (c(L), c(R)), MUL_ (d(R), LN_ (c(L))));
+                            break;
 
                         case Base_And_Degree:
-                            return MUL_ (POW_ (c(L), c(R)), ADD_ (MUL_ (d(R), LN_ (c(L))),  DIV_ (MUL_ (c(R), d(L)), c(L))));
+                            New_Node = MUL_ (POW_ (c(L), c(R)), ADD_ (MUL_ (d(R), LN_ (c(L))),  DIV_ (MUL_ (c(R), d(L)), c(L))));
+                            break;
 
                         default:
-                            return ZERO_;
+                            New_Node = ZERO_;
+                            break;
                     }
-
+                    break;
                 case LN:
-                    return DIV_ (d(L), c(L));
+                    New_Node = DIV_ (d(L), c(L));
+                    break;
 
                 case SIN:
-                    return MUL_ (COS_ (c(L)), d(L));
+                    New_Node = MUL_ (COS_ (c(L)), d(L));
+                    break;
 
                 case COS:
-                    return MUL_ (MINUS_ONE_, MUL_ (SIN_ (c(L)), d(L)));
+                    New_Node = MUL_ (MINUS_ONE_, MUL_ (SIN_ (c(L)), d(L)));
+                    break;
 
                 case TG:
-                    return DIV_ (d(L), POW_ (COS_ (c(L)), TWO_));
+                    New_Node = DIV_ (d(L), POW_ (COS_ (c(L)), TWO_));
+                    break;
 
                 case CTG:
-                    return DIV_ (MUL_ (MINUS_ONE_, d(L)), POW_ (SIN_ (c(L)), TWO_));
+                    New_Node = DIV_ (MUL_ (MINUS_ONE_, d(L)), POW_ (SIN_ (c(L)), TWO_));
+                    break;
 
                 case ARCSIN:
-                    return DIV_ (d(L), POW_ (SUB_ (ONE_, POW_ (c(L), TWO_)), HALF_));
+                    New_Node = DIV_ (d(L), POW_ (SUB_ (ONE_, POW_ (c(L), TWO_)), HALF_));
+                    break;
 
                 case ARCCOS:
-                    return MUL_ (MINUS_ONE_, DIV_ (d(L), POW_ (SUB_ (ONE_, POW_ (c(L), TWO_)), HALF_)));
+                    New_Node = MUL_ (MINUS_ONE_, DIV_ (d(L), POW_ (SUB_ (ONE_, POW_ (c(L), TWO_)), HALF_)));
+                    break;
 
                 case ARCTG:
-                    return DIV_ (d(L), ADD_ (ONE_, POW_ (c(L), TWO_)));
+                    New_Node = DIV_ (d(L), ADD_ (ONE_, POW_ (c(L), TWO_)));
+                    break;
 
                 case ARCCTG:
-                    return MUL_(MINUS_ONE_, DIV_(d(L), ADD_(ONE_, POW_(c(L), TWO_))));
+                    New_Node = MUL_(MINUS_ONE_, DIV_(d(L), ADD_(ONE_, POW_(c(L), TWO_))));
+                    break;
 
                 case SH:
-                    return MUL_ (CH_ (c(L)), d(L));
+                    New_Node = MUL_ (CH_ (c(L)), d(L));
+                    break;
 
                 case CH:
-                    return MUL_ (SH_ (c(L)), d(L));;
+                    New_Node = MUL_ (SH_ (c(L)), d(L));;
+                    break;
 
                 case TH:
-                    return DIV_ (d(L), POW_ (CH_ (c(L)), TWO_));
+                    New_Node = DIV_ (d(L), POW_ (CH_ (c(L)), TWO_));
+                    break;
 
                 case CTH:
-                    return MUL_ (MINUS_ONE_, DIV_ (d(L), POW_ (SH_ (c(L)), TWO_)));
+                    New_Node = MUL_ (MINUS_ONE_, DIV_ (d(L), POW_ (SH_ (c(L)), TWO_)));
+                    break;
             }
     }
 
-    return NULL;
+    if (Numbers_Start == 0)
+    {
+        Tree_Dump_Latex (Node, New_Node);
+    }
+
+    return New_Node;
+
 }
 
 node_k* Copy_Tree            (const node_k* const Node)
@@ -1827,19 +1954,19 @@ int Neutral_Node       (node_k* const Node, const int Direction_Parent, tree_k* 
 
     int Check_Neutral = 0;
 
-    if (Node->Right != NULL && Node->Right->Type == Number && Node->Right->Value == 0)
+    if (Node->Right != NULL && Node->Right->Type == Number && abs(Node->Right->Value - 0) < 1e-10)
     {
         Check_Neutral = R0;
     }
-    else if (Node->Right != NULL && Node->Right->Type == Number && Node->Right->Value == 1)
+    else if (Node->Right != NULL && Node->Right->Type == Number && abs(Node->Right->Value - 1) < 1e-10)
     {
         Check_Neutral = R1;
     }
-    else if (Node->Left != NULL && Node->Left->Type == Number && Node->Left->Value == 0)
+    else if (Node->Left != NULL && Node->Left->Type == Number && abs(Node->Left->Value - 0) < 1e-10)
     {
         Check_Neutral = L0;
     }
-    else if (Node->Left != NULL && Node->Left->Type == Number && Node->Right->Value == 1)
+    else if (Node->Left != NULL && Node->Left->Type == Number && abs(Node->Left->Value - 1) < 1e-10)
     {
         Check_Neutral = L1;
     }
@@ -2001,6 +2128,595 @@ int Fasten             (node_k* const Node, const int Direction_Parent, const in
     }
 
     free (Node);
+    return 0;
+}
+
+
+int Taylor_Series ()
+{
+    for (int i = 2; i < Taylor_Number; i++)
+    {
+        Array_Tree[i] = Differentiation_Tree (Array_Tree[i - 1], Variable_Differentiation);
+
+        if (Array_Tree[i] == NULL)
+        {
+            printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+            return There_Are_Errors;
+        }
+    }
+
+    if (Taylor_Series_Dump () == There_Are_Errors)
+    {
+        printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    return 0;
+}
+
+
+int Start_Latex          ()
+{
+    FILE* file_latex = fopen (Name_Latex, "w");
+    if (file_latex == NULL)
+    {
+        printf ("%s:%d: Error open logfile in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    fprintf (file_latex, "\\documentclass{article}\n"
+                         "\\setlength{\\parindent}{0pt}\n"
+                         "\\usepackage{graphicx}\n"
+                         "\\usepackage[T2A]{fontenc}\n"
+                         "\\usepackage[utf8]{inputenc}\n"
+                         "\\usepackage[russian]{babel}\n"
+                         "\n"
+                         "\\usepackage[left=2cm, top=2cm, right=2cm, bottom=2cm]{geometry}\n"
+                         "\n"
+                         "\\usepackage{breqn}\\title{Матан Ботан}\n"
+                         "\\author{Кирилл Костышин}\n"
+                         "\n"
+                         "\\begin{document}\n"
+                         "\\maketitle\n\n");
+
+    fclose (file_latex);
+
+    return 0;
+}
+
+int End_Latex            ()
+{
+    FILE* file_latex = fopen (Name_Latex, "a");
+    if (file_latex == NULL)
+    {
+        printf ("%s:%d: Error open logfile in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    fprintf (file_latex, "\\end{document}\n");
+
+    fclose (file_latex);
+
+    system ("pdflatex Report.tex > /dev/null");
+
+    return 0;
+}
+
+int Start_Tree_Dump      (const node_k* const Node)
+{
+    FILE* file_latex = fopen (Name_Latex, "a");
+    if (file_latex == NULL)
+    {
+        printf ("%s:%d: Error open logfile in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    fprintf (file_latex, "\\pagebreak\n"
+                         "\\section{Основное уравнение}\n\n");
+
+    fprintf (file_latex, "\\begin{dmath*}[spread=10pt]\n");
+
+    fprintf (file_latex, "f\\left(");
+
+    for (size_t i = 0; i < Size_Array_Variable; i++)
+    {
+        if (i == Size_Array_Variable - 1)
+        {
+            fprintf (file_latex, "%s", Array_Variable[i].Name_Variable);
+        }
+
+        else
+        {
+            fprintf (file_latex, "%s, ", Array_Variable[i].Name_Variable);
+        }
+    }
+
+    fprintf (file_latex, " \\right) = ");
+
+    Print_Subtree (Node, file_latex);
+
+    fprintf (file_latex, "\n\\end{dmath*}\n\n");
+
+    fclose (file_latex);
+
+    return 0;
+}
+
+int Tree_Dump_Latex      (const node_k* const Node, const node_k* const New_Node)
+{
+    FILE* file_latex = fopen (Name_Latex, "a");
+    if (file_latex == NULL)
+    {
+        printf ("%s:%d: Error open logfile in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    fprintf (file_latex, "\\begin{dmath*}[spread=10pt]\n");
+
+    fprintf (file_latex, "\\frac{d}{d%s} \\left(", Array_Variable[Variable_Differentiation].Name_Variable);
+
+    Print_Subtree (Node, file_latex);
+
+    fprintf (file_latex, " \\right) = ");
+
+    Print_Subtree (New_Node, file_latex);
+
+    fprintf (file_latex, "\n\\end{dmath*}\n\n");
+
+    fclose (file_latex);
+
+    return 0;
+}
+
+int Print_Subtree        (const node_k* const Node, FILE* file_latex)
+{
+    if (Node->Left != NULL && Node->Right != NULL && Node->Value != DIV)
+    {
+        if (Node->Type == Operation && Node->Value == MUL && ( (Node->Left->Type == Operation && Node->Left->Value == ADD) || (Node->Left->Type == Operation && Node->Left->Value == SUB) || (Node->Left->Type == Number && Node->Left->Value < 0)))
+        {
+            fprintf (file_latex, "\\left( ");
+        }
+        if (Node->Type == Operation && Node->Value == POW && Node->Left->Type == Operation)
+        {
+            fprintf (file_latex, "\\left( ");
+        }
+
+        Print_Subtree (Node->Left, file_latex);
+
+        if (Node->Type == Operation && Node->Value == MUL && ( (Node->Left->Type == Operation && Node->Left->Value == ADD) || (Node->Left->Type == Operation && Node->Left->Value == SUB) || (Node->Left->Type == Number && Node->Left->Value < 0) ))
+        {
+            fprintf (file_latex, "\\right) ");
+        }
+        if (Node->Type == Operation && Node->Value == POW && Node->Left->Type == Operation)
+        {
+            fprintf (file_latex, "\\right) ");
+        }
+    }
+
+    switch (Node->Type)
+    {
+        case Number:
+            fprintf (file_latex, " %g ", Node->Value);
+            break;
+        case Operation:
+            fprintf (file_latex, "%s ", Name_Operation[int(Node->Value)].Name_For_Latex);
+
+            switch (int (Node->Value))
+            {
+                case DIV:
+                case LN:
+                case SIN:
+                case COS:
+                case TG:
+                case CTG:
+                case ARCSIN:
+                case ARCCOS:
+                case ARCTG:
+                case ARCCTG:
+                case SH:
+                case CH:
+                case TH:
+                case CTH:
+                    fprintf (file_latex, "{");
+                    if (Node->Value != DIV && Node->Left->Type == Operation)
+                    {
+                        fprintf (file_latex, "\\left( ");
+                    }
+
+                    Print_Subtree (Node->Left, file_latex);
+
+                    if (Node->Value != DIV && Node->Left->Type == Operation)
+                    {
+                        fprintf (file_latex, "\\right) ");
+                    }
+
+                    fprintf (file_latex, "}");
+
+                    break;
+            }
+            break;
+        case Variable:
+            fprintf (file_latex, "%s ", Array_Variable[int(Node->Value)].Name_Variable);
+            break;
+    }
+
+    if (Node->Right != NULL)
+    {
+        if (Node->Type == Operation && (Node->Value == POW || Node->Value == DIV))
+        {
+            fprintf (file_latex, "{");
+
+            if (Node->Right->Type == Operation && Node->Value == POW)
+            {
+                fprintf (file_latex, "\\left( ");
+            }
+
+            Print_Subtree (Node->Right, file_latex);
+
+            if (Node->Right->Type == Operation && Node->Value == POW)
+            {
+                fprintf (file_latex, "\\right) ");
+            }
+
+            fprintf (file_latex, "}");
+        }
+        else
+        {
+            if (Node->Type == Operation && Node->Value == MUL && ( (Node->Right->Type == Operation && Node->Right->Value == ADD) || (Node->Right->Type == Operation && Node->Right->Value == SUB) || (Node->Right->Type == Number && Node->Right->Value < 0) ))
+            {
+                fprintf (file_latex, "\\left( ");
+            }
+
+            Print_Subtree (Node->Right, file_latex);
+
+            if (Node->Type == Operation && Node->Value == MUL && ( (Node->Right->Type == Operation && Node->Right->Value == ADD) || (Node->Right->Type == Operation && Node->Right->Value == SUB) || (Node->Right->Type == Number && Node->Right->Value < 0) ))
+            {
+                fprintf (file_latex, "\\right) ");
+            }
+        }
+    }
+
+    return 0;
+}
+
+int Simplify_Dump        (const node_k* const Node)
+{
+    FILE* file_latex = fopen (Name_Latex, "a");
+    if (file_latex == NULL)
+    {
+        printf ("%s:%d: Error open logfile in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    fprintf (file_latex, "Упрощаем получившееся выражение \\\n\n");
+
+    fprintf (file_latex, "\\begin{dmath*}[spread=10pt]\n");
+
+    fprintf (file_latex, "\\frac{d}{d%s} f\\left(", Array_Variable[Variable_Differentiation].Name_Variable);
+
+    for (size_t i = 0; i < Size_Array_Variable; i++)
+    {
+        if (i == Size_Array_Variable - 1)
+        {
+            fprintf (file_latex, "%s", Array_Variable[i].Name_Variable);
+        }
+
+        else
+        {
+            fprintf (file_latex, "%s, ", Array_Variable[i].Name_Variable);
+        }
+    }
+
+    fprintf (file_latex, " \\right) = ");
+
+    Print_Subtree (Node, file_latex);
+
+    fprintf (file_latex, "\n\\end{dmath*}\n\n");
+
+    fclose (file_latex);
+
+    return 0;
+}
+
+int Differentiation_Dump ()
+{
+    FILE* file_latex = fopen (Name_Latex, "a");
+    if (file_latex == NULL)
+    {
+        printf ("%s:%d: Error open logfile in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    fprintf (file_latex, "\\pagebreak\n"
+                         "\\section{Расчет производной}\n\n");
+
+    fprintf (file_latex, "Берем производную от функции по переменной из файла - %s \\\n\n", Array_Variable[Variable_Differentiation].Name_Variable);
+
+    fclose (file_latex);
+
+    return 0;
+}
+
+int Taylor_Series_Dump   ()
+{
+    FILE* file_latex = fopen (Name_Latex, "a");
+    if (file_latex == NULL)
+    {
+        printf ("%s:%d: Error open logfile in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    fprintf (file_latex, "\\pagebreak\n"
+                         "\\section{Ряд Тейлора}\n\n");
+
+    fprintf (file_latex, "\\begin{dmath*}[spread=10pt]\n"
+                        "f(x) = f(a) + f'(a)(x-a) + \\frac{f''(a)}{2!}(x-a)^2 + \\frac{f'''(a)}{3!}(x-a)^3 + \\cdots\n"
+                        "\\end{dmath*}\n\n");
+
+    fprintf (file_latex, "a = %g\\\n\n", Taylor_Dot);
+
+    Array_Calculate_Tree = (double*) calloc (Taylor_Number, sizeof (double));
+
+    for (int i = 0; i < Taylor_Number; i++)
+    {
+        fprintf (file_latex, "\\begin{dmath*}[spread=10pt]\n");
+
+        fprintf (file_latex, "f^{\\left(%d\\right)}", i);
+
+        fprintf (file_latex, "\\left(");
+
+        for (size_t i = 0; i < Size_Array_Variable; i++)
+        {
+            if (i == Size_Array_Variable - 1)
+            {
+                fprintf (file_latex, "%s", Array_Variable[i].Name_Variable);
+            }
+
+            else
+            {
+                fprintf (file_latex, "%s, ", Array_Variable[i].Name_Variable);
+            }
+        }
+
+        fprintf (file_latex, " \\right) = ");
+
+        Print_Subtree (Array_Tree[i]->Root, file_latex);
+
+        fprintf (file_latex, "\n\\end{dmath*}\n\n");
+
+
+
+        fprintf (file_latex, "\\begin{dmath*}[spread=10pt]\n");
+
+        fprintf (file_latex, "f^{\\left(%d\\right)}", i);
+
+        fprintf (file_latex, "\\left( %g", Taylor_Dot);
+
+        fprintf (file_latex, " \\right) = ");
+
+        tree_k Tree = {};
+
+        Tree.Root = Copy_Tree (Array_Tree[i]->Root);
+        Tree.Size = 1;
+
+        Calculate_Tree (Tree.Root, Taylor_Dot);
+
+        if (Simplify (&Tree) == There_Are_Errors)
+        {
+            printf ("%s:%d: Error in %s\n", __FILE__, __LINE__, __FUNCTION__);
+            return There_Are_Errors;
+        }
+
+        fprintf (file_latex, "%g", Tree.Root->Value);
+
+        Array_Calculate_Tree[i] = Tree.Root->Value;
+
+        free (Tree.Root);
+
+        fprintf (file_latex, "\n\\end{dmath*}\n\n");
+    }
+
+    fprintf (file_latex, "\\begin{dmath*}[spread=10pt]\n");
+    fprintf (file_latex, "f(x) = ");
+
+    for (int i = 0; i < Taylor_Number; i++)
+    {
+        fprintf (file_latex, "\\frac{%g * (x-%g) ^ {%d}}{%d!} + ", Array_Calculate_Tree[i], Taylor_Dot, i, i);
+    }
+
+    fprintf (file_latex, "o(x^{%d})\n", Taylor_Number - 1);
+    fprintf (file_latex, "\\end{dmath*}\n\n");
+
+
+
+    fclose (file_latex);
+
+    return 0;
+}
+
+int Graphics_Latex       ()
+{
+    if (Graphics_Gnuplot () == There_Are_Errors)
+    {
+        printf ("%s:%d: Error open logfile in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    system ("gnuplot Graphics.txt");
+
+    FILE* file_latex = fopen (Name_Latex, "a");
+    if (file_latex == NULL)
+    {
+        printf ("%s:%d: Error open logfile in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    fprintf (file_latex, "\\pagebreak\n"
+                         "\\section{Графики}\n\n");
+
+    fprintf (file_latex, "\\begin{figure}[ht]\n"
+                         "    \\centering\n"
+                         "    \\includegraphics[width = 0.9\\textwidth, keepaspectratio]{Graphics.png}\n"
+                         "    \\label{fig:myimage}\n"
+                         "\\end{figure}\n\n");
+
+    fclose (file_latex);
+
+    return 0;
+}
+
+int Graphics_Gnuplot     ()
+{
+    FILE* file_gnuplot = fopen (Name_Graphics, "w");
+    if (file_gnuplot == NULL)
+    {
+        printf ("%s:%d: Error open logfile in %s\n", __FILE__, __LINE__, __FUNCTION__);
+        return There_Are_Errors;
+    }
+
+    fprintf (file_gnuplot,  "set terminal pngcairo size 800,600 enhanced font 'Arial,12'\n"
+                            "set output 'Graphics.png'\n"
+                            "set samples 1000\n"
+                            "\n"
+                            "set xlabel 'x'\n"
+                            "set ylabel 'y'\n"
+                            "set grid\n"
+                            "\n");
+
+
+    fprintf (file_gnuplot, "set xrange [2.8:3.2]\n");
+    fprintf (file_gnuplot, "set yrange [-1:1]\n\n");
+
+    fprintf (file_gnuplot, "f(x) =");
+
+    Gnuplot_Print_Subtree (Array_Tree[0]->Root, file_gnuplot);
+
+    fprintf (file_gnuplot, "\n\n");
+
+    fprintf (file_gnuplot, "f_1(x) = ");
+
+    for (int i = 0; i < Taylor_Number; i++)
+    {
+        if (i != Taylor_Number - 1)
+        {
+            fprintf (file_gnuplot, "(%g * (x-%g) ** %d) / %d! + ", Array_Calculate_Tree[i], Taylor_Dot, i, i);
+        }
+
+        else
+        {
+            fprintf (file_gnuplot, "(%g * (x-%g) ** %d) / %d!", Array_Calculate_Tree[i], Taylor_Dot, i, i);
+        }
+    }
+    fprintf (file_gnuplot, "\n\n");
+
+    fprintf (file_gnuplot, "plot f(x) with lines lw 2 title 'f(x)',\\\n"
+                           "     f_1(x) with lines lw 2 title 'df(x)'\n\n");
+
+    fprintf (file_gnuplot, "set output\n");
+
+    fclose (file_gnuplot);
+
+    return 0;
+}
+
+int Gnuplot_Print_Subtree (const node_k* const Node, FILE* file_gnuplot)
+{
+    if (Node->Left != NULL && Node->Right != NULL)
+    {
+        if (Node->Type == Operation && Node->Value == MUL && ( (Node->Left->Type == Operation && Node->Left->Value == ADD) || (Node->Left->Type == Operation && Node->Left->Value == SUB) || (Node->Left->Type == Number && Node->Left->Value < 0)))
+        {
+            fprintf (file_gnuplot, "( ");
+        }
+        if (Node->Type == Operation && (Node->Value == POW ||  Node->Value == DIV) && Node->Left->Type == Operation)
+        {
+            fprintf (file_gnuplot, "( ");
+        }
+
+        Gnuplot_Print_Subtree (Node->Left, file_gnuplot);
+
+        if (Node->Type == Operation && Node->Value == MUL && ( (Node->Left->Type == Operation && Node->Left->Value == ADD) || (Node->Left->Type == Operation && Node->Left->Value == SUB) || (Node->Left->Type == Number && Node->Left->Value < 0) ))
+        {
+            fprintf (file_gnuplot, ") ");
+        }
+        if (Node->Type == Operation && (Node->Value == POW ||  Node->Value == DIV) && Node->Left->Type == Operation)
+        {
+            fprintf (file_gnuplot, ") ");
+        }
+    }
+
+    switch (Node->Type)
+    {
+        case Number:
+            fprintf (file_gnuplot, " %g ", Node->Value);
+            break;
+        case Operation:
+            if (Node->Value != POW)
+            {
+                fprintf (file_gnuplot, "%s ", Name_Operation[int(Node->Value)].Name_For_User);
+            }
+            else
+            {
+                fprintf (file_gnuplot, "** ");
+            }
+
+            switch (int (Node->Value))
+            {
+                case LN:
+                case SIN:
+                case COS:
+                case TG:
+                case CTG:
+                case ARCSIN:
+                case ARCCOS:
+                case ARCTG:
+                case ARCCTG:
+                case SH:
+                case CH:
+                case TH:
+                case CTH:
+                    if (Node->Left->Type == Operation)
+                    {
+                        fprintf (file_gnuplot, "( ");
+                    }
+
+                    Gnuplot_Print_Subtree (Node->Left, file_gnuplot);
+
+                    if (Node->Left->Type == Operation)
+                    {
+                        fprintf (file_gnuplot, ") ");
+                    }
+
+                    break;
+            }
+            break;
+        case Variable:
+            fprintf (file_gnuplot, "%s ", Array_Variable[int(Node->Value)].Name_Variable);
+            break;
+    }
+
+    if (Node->Right != NULL)
+    {
+        if (Node->Type == Operation && Node->Value == MUL && ( (Node->Right->Type == Operation && Node->Right->Value == ADD) || (Node->Right->Type == Operation && Node->Right->Value == SUB) || (Node->Right->Type == Number && Node->Right->Value < 0) ))
+        {
+            fprintf (file_gnuplot, "( ");
+        }
+        if (Node->Type == Operation && (Node->Value == POW ||  Node->Value == DIV) && Node->Right->Type == Operation)
+        {
+            fprintf (file_gnuplot, "( ");
+        }
+
+        Gnuplot_Print_Subtree (Node->Right, file_gnuplot);
+
+        if (Node->Type == Operation && (Node->Value == MUL || Node->Value == DIV ) && ( (Node->Right->Type == Operation && Node->Right->Value == ADD) || (Node->Right->Type == Operation && Node->Right->Value == SUB) || (Node->Right->Type == Number && Node->Right->Value < 0) ))
+        {
+            fprintf (file_gnuplot, ") ");
+        }
+        if (Node->Type == Operation && (Node->Value == POW ||  Node->Value == DIV) && Node->Right->Type == Operation)
+        {
+            fprintf (file_gnuplot, ") ");
+        }
+    }
+
     return 0;
 }
 

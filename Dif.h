@@ -70,6 +70,7 @@ struct oper_k
     const char* Name_For_Dump;
     int Number_Operation;
     const char* Name_For_User;
+    const char* Name_For_Latex;
 };
 
 enum Operation
@@ -104,28 +105,28 @@ enum Operation
 };
 
 const oper_k Name_Operation[Quantity_Operations] = {
-    {"ADD", ADD, "+"},
-    {"SUB", SUB, "-"},
-    {"MUL", MUL, "*"},
-    {"DIV", DIV, "/"},
+    {"ADD", ADD, "+", "+"},
+    {"SUB", SUB, "-", "-"},
+    {"MUL", MUL, "*", "\\cdot"},
+    {"DIV", DIV, "/", "\\frac"},
 
-    {"POW", POW, "^" },
-    {"LN" , LN , "ln"},
+    {"POW", POW, "^" , "^" },
+    {"LN" , LN , "ln", "ln"},
 
-    {"SIN", SIN, "sin"},
-    {"COS", COS, "cos"},
-    {"TG" , TG , "tg" },
-    {"CTG", CTG, "ctg"},
+    {"SIN", SIN, "sin", "\\sin"},
+    {"COS", COS, "cos", "\\cos"},
+    {"TG" , TG , "tg" , "\\tg"},
+    {"CTG", CTG, "ctg", "\\ctg"},
 
-    {"ARCSIN", ARCSIN, "arcsin"},
-    {"ARCCOS", ARCCOS, "arccos"},
-    {"ARCTG" , ARCTG , "arctg" },
-    {"ARCCTG", ARCCTG, "arcctg"},
+    {"ARCSIN", ARCSIN, "arcsin", "\\arcsin"},
+    {"ARCCOS", ARCCOS, "arccos", "\\arccos"},
+    {"ARCTG" , ARCTG , "arctg" , "\\arctg" },
+    {"ARCCTG", ARCCTG, "arcctg", "\\arcctg"},
 
-    {"SH" , SH , "sh" },
-    {"CH" , CH , "ch" },
-    {"TH" , TH , "th" },
-    {"CTH", CTH, "cth"},
+    {"SH" , SH , "sh" , "\\sh" },
+    {"CH" , CH , "ch" , "\\ch" },
+    {"TH" , TH , "th" , "\\th" },
+    {"CTH", CTH, "cth", "\\cth"},
 
     {"PI" , PI , "pi"},
     {"EXP", EXP, "e" }
@@ -157,19 +158,24 @@ enum Type_Neutral
 };
 
 variable_k* Array_Variable   = NULL;
+tree_k** Array_Tree          = NULL;
+double* Array_Calculate_Tree = NULL;
 size_t Size_Array_Variable   =    0;
 int Variable_Differentiation =   -1;
+int Taylor_Number            =   -1;
+double Taylor_Dot            =   -1;
 
 const int There_Are_Errors =           -2902;
 const int Canary           =            2108;
 const char Name_Log[]      = "Log_File.html";
+const char Name_Latex[]    =    "Report.tex";
+const char Name_Graphics[] =  "Graphics.txt";
 const char Equation[]      =  "Equation.txt";
 const double Minimum_Contrast_Ratio    =   6;
 
-int Print_Node (const node_k* const Node);
-
-int Tree_Ctor (tree_k* const Tree);
-int Tree_Dtor (tree_k* const Tree);
+tree_k* Tree_Ctor   ();
+int Tree_Dtor       (tree_k* const Tree);
+int Delete_All_Tree ();
 
 int Tree_Error         (const tree_k* const Tree);
 int Check_Verification (const node_k* Node, size_t* const Counter_Element);
@@ -184,6 +190,7 @@ int Dump_For_Html      (const tree_k* const Tree, const char* const Name_File, c
 int Delete_Subtree  (node_k* Node, size_t* const Counter_Delete);
 size_t Size_Subtree (const node_k* const Node);
 int Set_Parents     (node_k* Node, node_k* Parent);
+int Calculate_Tree  (node_k* const Node, const int Meaning);
 
 node_k* Get_General            (char** Str, const char* const Start_Str);
 node_k* Get_For_Addition       (char** Str, const char* const Start_Str);
@@ -198,10 +205,11 @@ int Get_Number                 (char** Str, const char* const Start_Str);
 int Table_Name_Function (const char* const Str);
 int Table_Name_Variable (const char* const Str);
 int Skip_Spaces         (char** Str);
-int Read_Diff_Variable  (char** Str);
+int Read_Diff_Variable  (char** Str, const char* const Start_Str);
+int Read_Taylor         (char** Str, const char* const Start_Str);
 
 tree_k* Differentiation_Tree (const tree_k* const Tree, const int Number_Variable);
-node_k* Differentiation_Node (const node_k* const Node, const int Number_Variable);
+node_k* Differentiation_Node (const node_k* const Node, const int Number_Variable, const tree_k* const Tree, const int Numbers_Start);
 node_k* Copy_Tree            (const node_k* const Node);
 node_k* Create_Node          (const int Type, const double Value, node_k* const Left, node_k* const Right);
 int Find_Variable            (const node_k* const Node, const int Number_Variable);
@@ -213,6 +221,20 @@ int Number_Node        (node_k* const Node);
 int Check_Neutral_Tree (node_k* const Node, const int Direction_Parent, tree_k* const Tree);
 int Neutral_Node       (node_k* const Node, const int Direction_Parent, tree_k* const Tree);
 int Fasten             (node_k* const Node, const int Direction_Parent, const int Direction_Son, tree_k* const Tree);
+
+int Taylor_Series ();
+
+int Start_Latex          ();
+int End_Latex            ();
+int Start_Tree_Dump      (const node_k* const Node);
+int Tree_Dump_Latex      (const node_k* const Node, const node_k* const New_Node);
+int Print_Subtree        (const node_k* const Node, FILE* file_latex);
+int Simplify_Dump        (const node_k* const Node);
+int Differentiation_Dump ();
+int Taylor_Series_Dump   ();
+int Graphics_Latex       ();
+int Graphics_Gnuplot     ();
+int Gnuplot_Print_Subtree (const node_k* const Node, FILE* file_gnuplot);
 
 int Start_Logfile           ();
 int Print_Separator_In_Log  (const size_t Len_Separator, FILE* file_html);
